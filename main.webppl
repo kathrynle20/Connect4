@@ -34,19 +34,6 @@ var transition = function (state, move, player) {
   return assign(state, move.x, newRow);
 };
 
-var diag1 = function (state) {
-  return mapIndexed(function (i, x) {
-    return x[i];
-  }, state);
-};
-
-var diag2 = function (state) {
-  var n = state.length;
-  return mapIndexed(function (i, x) {
-    return x[n - (i + 1)];
-  }, state);
-};
-
 var hasWon = dp.cache(function (state, player) {
   var check = function (xs) {
     return _.countBy(xs)[player] == xs.length;
@@ -60,10 +47,88 @@ var hasWon = dp.cache(function (state, player) {
     map(second, state),
     map(third, state),
     map(fourth, state), // cols
-    diag1(state),
-    diag2(state), // diagonals
+    checkDiagonals(state), // diagonals
   ]);
 });
 
-viz.table(movePrior(startState));
+// viz.table(movePrior(startState));
 // hasWon(startState, "x");
+
+//Checking diagona wins:
+var allEqual = function (arr) {
+  return (
+    arr[0] && arr[1] && arr[2] && arr[3] && (arr[0] === "x" || arr[0] === "o")
+  );
+};
+
+// Recursive function to extract all left-to-right diagonals of length 4
+var getLeftToRightDiagonals = function (diagonals, grid, row, col) {
+  // Base case: No more diagonals to extract
+  if (row > 2 || col > 3) {
+    return diagonals;
+  }
+  // Extract the diagonal starting at (row, col)
+  var diagonal = [
+    grid[row][col],
+    grid[row + 1][col + 1],
+    grid[row + 2][col + 2],
+    grid[row + 3][col + 3],
+  ];
+  var newDiagonals = diagonals.concat([diagonal]);
+  if (col === 7 - 4) {
+    return getLeftToRightDiagonals(newDiagonals, grid, row + 1, 0);
+  } else {
+    return getLeftToRightDiagonals(newDiagonals, grid, row, col + 1);
+  }
+};
+
+// Recursive function to extract all right-to-left diagonals of length 4
+var getRightToLeftDiagonals = function (diagonals, grid, row, col) {
+  // Base case: No more diagonals to extract
+  if (row > 2 || col < 3) {
+    return diagonals;
+  }
+  // Extract the diagonal starting at (row, col)
+  var diagonal = [
+    grid[row][col],
+    grid[row + 1][col - 1],
+    grid[row + 2][col - 2],
+    grid[row + 3][col - 3],
+  ];
+  var newDiagonals = diagonals.concat([diagonal]);
+  if (col == 3) {
+    return getRightToLeftDiagonals(newDiagonals, grid, row + 1, 7 - 1);
+  } else {
+    return getRightToLeftDiagonals(newDiagonals, grid, row, col - 1);
+  }
+};
+
+var checkEqualDiagonal = function (diagonals, i) {
+  if (allEqual(diagonals[i])) {
+    return true;
+  } else {
+    return i < diagonals.length ? checkEqualDiagonal(diagonals, i + 1) : false;
+  }
+};
+
+// Main function to check all length-4 diagonals
+var checkDiagonals = function (grid) {
+  var leftToRightDiagonals = getLeftToRightDiagonals([], grid, 0, 0);
+  var rightToLeftDiagonals = getRightToLeftDiagonals([], grid, 0, 7 - 1);
+  // Check if any diagonal satisfies the condition
+  return (
+    checkEqualDiagonal(leftToRightDiagonals, 0) ||
+    checkEqualDiagonal(rightToLeftDiagonals, 0)
+  );
+};
+
+var grid = [
+  ["?", "?", "?", "?", "?", "?", "?"],
+  ["?", "?", "?", "?", "?", "?", "?"],
+  ["x", "?", "?", "?", "?", "?", "?"],
+  ["o", "x", "?", "?", "?", "?", "?"],
+  ["o", "o", "x", "?", "?", "?", "?"],
+  ["o", "o", "o", "x", "?", "?", "?"],
+];
+
+checkDiagonals(grid);
