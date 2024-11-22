@@ -1,11 +1,69 @@
-var greeting = function () {
-  return flip(0.5) ? "Hello" : "Howdy";
+var startState = [
+  ["?", "?", "?", "?", "?", "?", "?"],
+  ["?", "?", "?", "?", "?", "?", "?"],
+  ["?", "?", "?", "?", "?", "?", "?"],
+  ["?", "?", "?", "?", "?", "?", "?"],
+  ["?", "?", "?", "?", "?", "?", "?"],
+  ["?", "?", "?", "?", "?", "?", "?"],
+];
+
+var isValidMove = function (state, move) {
+  return state[move.x][move.y] == "?" || move.x == 0;
 };
 
-var audience = function () {
-  return flip(0.5) ? "World" : "Universe";
+var movePrior = dp.cache(function (state) {
+  return Infer({
+    model() {
+      var move = {
+        x: randomInteger(6),
+        y: randomInteger(7),
+      };
+      condition(isValidMove(state, move));
+      return move;
+    },
+  });
+});
+
+var assign = function (obj, k, v) {
+  var newObj = _.clone(obj);
+  return Object.defineProperty(newObj, k, { value: v });
 };
 
-var phrase = greeting() + ", " + audience() + "!";
+var transition = function (state, move, player) {
+  var newRow = assign(state[move.x], move.y, player);
+  return assign(state, move.x, newRow);
+};
 
-phrase;
+var diag1 = function (state) {
+  return mapIndexed(function (i, x) {
+    return x[i];
+  }, state);
+};
+
+var diag2 = function (state) {
+  var n = state.length;
+  return mapIndexed(function (i, x) {
+    return x[n - (i + 1)];
+  }, state);
+};
+
+var hasWon = dp.cache(function (state, player) {
+  var check = function (xs) {
+    return _.countBy(xs)[player] == xs.length;
+  };
+  return any(check, [
+    state[0],
+    state[1],
+    state[2],
+    state[3], // rows
+    map(first, state),
+    map(second, state),
+    map(third, state),
+    map(fourth, state), // cols
+    diag1(state),
+    diag2(state), // diagonals
+  ]);
+});
+
+viz.table(movePrior(startState));
+// hasWon(startState, "x");
