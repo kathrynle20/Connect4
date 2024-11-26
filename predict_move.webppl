@@ -1,0 +1,345 @@
+// var startState = [
+//   ["?", "?", "?", "?", "?", "?", "?"],
+//   ["?", "?", "?", "?", "?", "?", "?"],
+//   ["?", "?", "?", "?", "?", "?", "?"],
+//   ["?", "?", "?", "?", "?", "?", "?"],
+//   ["?", "?", "?", "?", "?", "?", "?"],
+//   ["?", "?", "?", "?", "?", "?", "?"],
+// ];
+
+var isValidMove = function (state, move) {
+  return state[move.x][move.y] == "?" && (move.x == 5 || state[move.x+1][move.y] !== "?");
+};
+
+var getValidMoves = function(state, x, y, validMoves) {
+  // Base case: If we've iterated through all rows and columns, return the validMoves
+  if (x >= 6) {
+    return validMoves;
+  }
+
+  // Check if the current cell is a valid move
+  if (isValidMove(state, {x: x, y: y})) {
+    var move = {x: x, y: y}
+    var newValidMoves = validMoves.concat(move);
+    return (y < 6) ? getValidMoves(state, x, y + 1, newValidMoves) : getValidMoves(state, x + 1, 0, newValidMoves);
+  }
+  else{
+    return (y < 6) ? getValidMoves(state, x, y + 1, validMoves) : getValidMoves(state, x + 1, 0, validMoves);
+  }
+};
+
+// var movePrior = dp.cache(function (state) {
+//   return Infer({
+//     model() {
+//       var move = {
+//         x: randomInteger(6),
+//         y: randomInteger(7),
+//       };
+//       condition(isValidMove(state, move));
+//       return move;
+//     },
+//   });
+// });
+
+var movePrior = dp.cache(function(state) {
+  return Infer({
+    model() {
+      var validMoves = getValidMoves(state, 0, 0, []);
+      var i = randomInteger(validMoves.length)
+      return validMoves[i];
+    },
+  });
+});
+
+var assign = function (obj, k, v) {
+  var newObj = _.clone(obj);
+  return Object.defineProperty(newObj, k, { value: v });
+};
+
+var transition = function (state, move, player) {
+  var newRow = assign(state[move.x], move.y, player);
+  return assign(state, move.x, newRow);
+};
+
+var allEqual = function(arr, player) {
+  return (arr[0] == player && arr[1] == player && arr[2] == player && arr[3] == player)
+};
+
+var arrEqual = function(arr, player, i){
+  if (allEqual(arr[i], player)){
+    return true;
+  }
+  else{
+    return (i == arr.length-1) ? false : arrEqual(arr, player, i+1);
+  }
+}
+
+// Recursive function to extract all left-to-right diagonals of length 4
+var getLeftToRightDiagonals = function(diagonals, grid, row, col) {
+  // Base case: No more diagonals to extract
+  if (row > 2 || col > 3) {
+    return diagonals;
+  }
+  // Extract the diagonal starting at (row, col)
+  var diagonal = [
+    grid[row][col],
+    grid[row + 1][col + 1],
+    grid[row + 2][col + 2],
+    grid[row + 3][col + 3]
+  ];
+  var newDiagonals = diagonals.concat([diagonal]);
+  if (col === 7 - 4) {
+    return getLeftToRightDiagonals(newDiagonals, grid, row + 1, 0);
+  } 
+  else {
+    return getLeftToRightDiagonals(newDiagonals, grid, row, col + 1);
+  }
+};
+
+// Recursive function to extract all right-to-left diagonals of length 4
+var getRightToLeftDiagonals = function(diagonals, grid, row, col) {
+  // Base case: No more diagonals to extract
+  if (row > 2 || col < 3) {
+    return diagonals;
+  }
+  // Extract the diagonal starting at (row, col)
+  var diagonal = [
+    grid[row][col],
+    grid[row + 1][col - 1],
+    grid[row + 2][col - 2],
+    grid[row + 3][col - 3]
+  ];
+  var newDiagonals = diagonals.concat([diagonal]);
+  if (col == 3) {
+    return getRightToLeftDiagonals(newDiagonals, grid, row + 1, 7 - 1);
+  } 
+  else {
+    return getRightToLeftDiagonals(newDiagonals, grid, row, col - 1);
+  }
+};
+
+// Main function to check all length-4 diagonals
+var checkDiagonals = function(grid, player) {
+  var leftToRightDiagonals = getLeftToRightDiagonals([], grid, 0, 0);
+  var rightToLeftDiagonals = getRightToLeftDiagonals([], grid, 0, 7 - 1);
+  // Check if any diagonal satisfies the condition
+  return arrEqual(leftToRightDiagonals, player, 0) || arrEqual(rightToLeftDiagonals, player, 0);
+};
+
+var getRows = function(rows, grid, row, col){
+  if(row > 5 || col > 3){
+    return rows;
+  }
+  else{
+    var newRow = [grid[row][col], grid[row][col+1], grid[row][col+2], grid[row][col+3]];
+    var newRows = rows.concat([newRow]);
+    if (col == 3){
+      return getRows(newRows, grid, row+1, 0);
+    }
+    else{
+      return getRows(newRows, grid, row, col+1);
+    }
+  }
+}
+
+var checkRows = function(grid, player) {
+  var rows = getRows([], grid, 0, 0);
+  // Check if any row satisfies the condition
+  return arrEqual(rows, player, 0);
+};
+
+var getCols = function(cols, grid, row, col){
+  if(row > 2 || col > 6){
+    return cols;
+  }
+  else{
+    var newCol = [grid[row][col], grid[row+1][col], grid[row+2][col], grid[row+3][col]];
+    var newCols = cols.concat([newCol]);
+    if (row == 2){
+      return getCols(newCols, grid, 0, col+1);
+    }
+    else{
+      return getCols(newCols, grid, row+1, col);
+    }
+  }
+}
+
+var checkCols = function(grid, player) {
+  var cols = getCols([], grid, 0, 0);
+  // Check if any row satisfies the condition
+  return arrEqual(cols, player, 0);
+};
+
+// Check if someone has won
+var hasWon = function (state, player) {
+  return checkRows(state, player) || checkCols(state, player) || checkDiagonals(state, player)};
+
+var neighbors = function(state, player, i, count){
+  var neighborPoints = [{"x": x, "y": y - 1}, {"x": x + 1, "y": y - 1}, {"x": x + 1, "y": y}, {"x": x + 1, "y": y + 1}, {"x": x, "y": y + 1}, {"x": x - 1, "y": y + 1}, {"x": x - 1, "y": y}, {"x": x - 1, "y": y - 1}];
+  if (i == neighborPoints.length - 1){
+    return count;
+  }
+  if (neighborPoints[i].x >= 0 && neighborPoints[i].x < 6 && neighborPoints[i].y >= 0 && neighborPoints[i].y < 7){
+    return (grid[neighborPoints[i].x][neighborPoints[i].y] == player) ? neighbors(state, player, x, y, i+1, count+1) : neighbors(state, player, x, y, i+1, count);
+  }
+  else{
+    return neighbors(state, player, x, y, i+1, count);
+  }
+}
+
+var isComplete = function(state) {
+  return all(
+    function(x){
+      return x != '?';
+    },
+    _.flatten(state));
+}
+
+var isTerminal = function(state) {
+  return hasWon(state, 'x') || hasWon(state, 'o') || isComplete(state);  
+};
+
+var otherPlayer = function(player) {
+  return (player == "x") ? "o" : "x";
+};
+
+var isDraw = function(state) {
+  return !hasWon(state, 'x') && !hasWon(state, 'o');
+};
+
+var sequenceScore = function(state, player){
+  var rows = getRows([], state, 0, 0);
+  var cols = getCols([], state, 0, 0);
+  var leftToRightDiagonals = getLeftToRightDiagonals([], state, 0, 0);
+  var rightToLeftDiagonals = getRightToLeftDiagonals([], state, 0, 6);
+  var initialCount = {two:0, three:0};
+  var rowCount = countPlayer(rows, player, 0, initialCount, 0);
+  var colCount = countPlayer(cols, player, 0, rowCount, 0);
+  var l2rDiagonalCount = countPlayer(leftToRightDiagonals, player, 0, colCount, 0);
+  var r2lDiagonalCount = countPlayer(rightToLeftDiagonals, player, 0, l2rDiagonalCount, 0);
+  return (r2lDiagonalCount.three > 0) ? 6 : 4;
+}
+
+var countPlayer = function(arr, player, i, counts, maxSeq){
+  if (i == arr.length){
+    return (maxSeq == 3) ? {two: counts.two, three: counts.three + 1} : {two: counts.two + 1, three: counts.three};
+  }
+  else {
+    var count1 = (arr[i][0] == player) ? 1 : 0;
+    var count2 = (arr[i][1] == player) ? 1 : 0;
+    var count3 = (arr[i][2] == player) ? 1 : 0;
+    var count4 = (arr[i][3] == player) ? 1 : 0;
+    var inARow = count1+count2+count3+count4;
+    return (inARow > maxSeq) ? countPlayer(arr, player, i+1, counts, inARow) : countPlayer(arr, player, i+1, counts, maxSeq);
+  }
+}
+
+var utility = function(state, player) {
+  if (hasWon(state, player)) {
+    return 10;
+  } else if (isDraw(state)) {
+    return sequenceScore(state, player);
+  } else {
+    return -10;
+  }
+};
+
+var defense_utility = function(state, move, player){
+  var opponent = otherPlayer(player);
+  var alt_outcome = transition(state, move, opponent);
+  var opponent_points = utility(alt_outcome, opponent);
+  return -1 * opponent_points;
+}
+
+var makeMove = function(f) {return function() {
+    var strategy = mem(function(player) { //what is this player's strategy?
+      categorical({vs: ["offensive", "defensive", "random"], ps: [0.45, 0.45, 0.1]});
+    })
+    
+    var move = function(state, player){
+      var validMoves = getValidMoves(state, 0, 0, []);
+      var strat = strategy(player);
+      print(strat);
+      if (strat == "offensive"){
+        var points = map(function(x) { return utility(transition(state, x, player), player); }, validMoves);
+//         var opponentPoints = map(function(x) { return predictOpponent(transition(state, x, player), x, player); }, validMoves);
+//         var totalPoints = map2(function(x, y){ return x - 0.5 * y; }, points, opponentPoints);
+        return categorical({vs: validMoves, ps: map(function(x) { return x/sum(points); }, points)});
+      } else if (strat == "defensive"){
+        var points = map(function(x) { return defense_utility(transition(state, x, player), x, player); }, validMoves);
+//         var opponentPoints = map(function(x) { return predictOpponent(transition(state, x, player), x, player); }, validMoves);
+//         var totalPoints = map2(function(x, y){ return x - 0.5 * y; }, points, opponentPoints);
+        return categorical({vs: validMoves, ps: map(function(x) { return x/sum(points); }, points)});
+      } else if (strat == "random") {
+        return categorical({vs: validMoves, ps: map(function(x) { return 1/validMoves.length; }, validMoves)});
+      }
+    }
+    
+//     var predictOpponent = function(state, move, player){
+//       var nextState = transition(state, move, player);
+//       var opponent = otherPlayer(player);
+//       var validMoves = getValidMoves(nextState, 0, 0, []);
+//       var nextMove = sample(Infer({ model(){
+//         var points = map(function(x) { return utility(transition(nextState, x, opponent), opponent); }, validMoves);
+//         return categorical({vs: validMoves, ps: map(function(x) { return x/sum(points); }, points)});
+//       }}))
+//       var futureState = transition(nextState, nextMove, opponent);
+//       var opponentPoints = utility(futureState, opponent);
+//       return opponentPoints
+//     }
+    
+    f(strategy, move)
+}}
+
+
+// var act = dp.cache(function(state, player) {
+//   return Infer({ model() {
+//     var move = sample(movePrior(state));
+//     var eu = expectation(Infer({ model() {
+//       var outcome = transition(state, move, player);
+//       return utility(outcome, player);
+//     }}));
+//     factor(eu);    
+//     return move;
+//   }});
+// });
+
+// var act = dp.cache(function(state, player) {
+//   return Infer({ model() {
+//     var move = sample(movePrior(state));
+//     var eu = expectation(Infer({method: "MCMC", samples: 10, model() {
+//       var outcome = simulate(state, move, player);
+//       return utility(outcome, player);
+//     }}));
+//     factor(eu);    
+//     return move;
+//   }});
+// });
+
+// var simulate = function(state, action, player) {
+//   var nextState = transition(state, action, player);
+//   if (isTerminal(nextState)) {
+//     return nextState;
+//   } else {
+//     var nextPlayer = otherPlayer(player);
+//     var nextAction = sample(act(nextState, nextPlayer));
+//     return simulate(nextState, nextAction, nextPlayer);
+//   }
+// };
+
+var grid = [
+  ["?", "?", "?", "?", "?", "?", "?"],
+  ["?", "?", "?", "?", "?", "?", "?"],
+  ["?", "?", "?", "?", "?", "?", "?"],
+  ["o", "?", "?", "?", "?", "?", "?"],
+  ["o", "o", "x", "?", "?", "?", "?"],
+  ["o", "o", "o", "x", "?", "?", "?"],
+];
+
+// print(hasWon(grid, "o"));
+// viz.table(act(grid, "x"));
+var dist = Infer({method:'enumerate'}, makeMove(function(strategy, move){
+  condition(strategy("x") == "offensive")
+  move(grid, "x");
+}))
+viz(dist, {xLabel: 'x', yLabel: 'y'})
