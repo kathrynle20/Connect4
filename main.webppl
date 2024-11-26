@@ -343,3 +343,34 @@ var grid = [
 
 // print(hasWon(grid, "o"));
 viz.table(act(grid, "x"));
+
+// predict the winner of the game
+var predictWinner = function (state) {
+  return Infer({
+    method: "MCMC",
+    samples: 1000, // num of samples for the inference
+    model() {
+      var simulateGame = function (currentState, currentPlayer) {
+        if (isTerminal(currentState)) {
+          if (hasWon(currentState, "x")) {
+            return "x";
+          } else if (hasWon(currentState, "o")) {
+            return "o";
+          } else {
+            return "draw";
+          }
+        } else {
+          var nextMove = sample(movePrior(currentState));
+          var nextState = transition(currentState, nextMove, currentPlayer);
+          var nextPlayer = otherPlayer(currentPlayer);
+          return simulateGame(nextState, nextPlayer);
+        }
+      };
+      // assume x is initial player
+      return simulateGame(state, "x");
+    },
+  });
+};
+
+
+print(predictWinner(grid, "x"));
