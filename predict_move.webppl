@@ -217,7 +217,7 @@ var sequenceScore = function(state, player){
   var colCount = countPlayer(cols, player, 0, rowCount, 0);
   var l2rDiagonalCount = countPlayer(leftToRightDiagonals, player, 0, colCount, 0);
   var r2lDiagonalCount = countPlayer(rightToLeftDiagonals, player, 0, l2rDiagonalCount, 0);
-  return (r2lDiagonalCount.three > 0) ? 6 : 4;
+  return (r2lDiagonalCount.three > 0) ? 10 : 4;
 }
 
 var countPlayer = function(arr, player, i, counts, maxSeq){
@@ -236,11 +236,11 @@ var countPlayer = function(arr, player, i, counts, maxSeq){
 
 var utility = function(state, player) {
   if (hasWon(state, player)) {
-    return 10;
+    return 20;
   } else if (isDraw(state)) {
     return sequenceScore(state, player);
   } else {
-    return -10;
+    return -20;
   }
 };
 
@@ -248,13 +248,13 @@ var defense_utility = function(state, move, player){
   var opponent = otherPlayer(player);
   var alt_outcome = transition(state, move, opponent);
   var opponent_points = utility(alt_outcome, opponent);
-  return -1 * opponent_points;
+  return opponent_points;
 }
 
 var makeMove = function(f) {return function() {
-    var strategy = mem(function(player) { //what is this player's strategy?
+    var strategy = function(player) { //what is this player's strategy?
       categorical({vs: ["offensive", "defensive", "random"], ps: [0.45, 0.45, 0.1]});
-    })
+    }
     
     var move = function(state, player){
       var validMoves = getValidMoves(state, 0, 0, []);
@@ -304,42 +304,83 @@ var makeMove = function(f) {return function() {
 //   }});
 // });
 
-// var act = dp.cache(function(state, player) {
-//   return Infer({ model() {
-//     var move = sample(movePrior(state));
-//     var eu = expectation(Infer({method: "MCMC", samples: 10, model() {
-//       var outcome = simulate(state, move, player);
-//       return utility(outcome, player);
-//     }}));
-//     factor(eu);    
-//     return move;
-//   }});
-// });
+// red: x
+// yellow: o
 
-// var simulate = function(state, action, player) {
-//   var nextState = transition(state, action, player);
-//   if (isTerminal(nextState)) {
-//     return nextState;
-//   } else {
-//     var nextPlayer = otherPlayer(player);
-//     var nextAction = sample(act(nextState, nextPlayer));
-//     return simulate(nextState, nextAction, nextPlayer);
-//   }
-// };
+var grid1 = [
+  ["?", "?", "?", "?", "?", "?", "?"],
+  ["?", "?", "?", "?", "?", "?", "?"],
+  ["?", "?", "?", "?", "?", "?", "?"],
+  ["?", "?", "?", "?", "x", "?", "?"],
+  ["?", "?", "o", "x", "o", "?", "?"],
+  ["?", "o", "x", "x", "o", "?", "?"],
+];
 
-var grid = [
+var grid2 = [
   ["?", "?", "?", "?", "?", "?", "?"],
   ["?", "?", "?", "?", "?", "?", "?"],
   ["?", "?", "?", "?", "?", "?", "?"],
-  ["o", "?", "?", "?", "?", "?", "?"],
-  ["o", "o", "x", "?", "?", "?", "?"],
-  ["o", "o", "o", "x", "?", "?", "?"],
+  ["?", "o", "?", "x", "o", "?", "?"],
+  ["?", "x", "o", "o", "x", "?", "?"],
+  ["?", "o", "o", "x", "x", "x", "o"],
+];
+
+var grid3 = [
+  ["?", "?", "?", "?", "?", "?", "?"],
+  ["?", "?", "?", "?", "?", "?", "?"],
+  ["?", "?", "?", "?", "?", "?", "?"],
+  ["x", "?", "?", "?", "x", "?", "?"],
+  ["x", "?", "?", "o", "o", "?", "?"],
+  ["o", "x", "o", "o", "o", "x", "x"],
+];
+
+var grid4 = [
+  ["?", "?", "?", "?", "?", "?", "?"],
+  ["?", "?", "?", "x", "?", "?", "?"],
+  ["?", "?", "?", "o", "?", "?", "?"],
+  ["?", "?", "x", "o", "x", "o", "?"],
+  ["?", "o", "o", "o", "x", "x", "x"],
+  ["?", "o", "o", "x", "o", "x", "x"],
 ];
 
 // print(hasWon(grid, "o"));
 // viz.table(act(grid, "x"));
 var dist = Infer({method:'enumerate'}, makeMove(function(strategy, move){
-  condition(strategy("x") == "offensive")
-  move(grid, "x");
+  move(grid1, "x");
 }))
-viz(dist, {xLabel: 'x', yLabel: 'y'})
+viz(dist, {xLabel: 'Row', yLabel: 'Column'})
+
+var dist = Infer({method:'enumerate'}, makeMove(function(strategy, move){
+  move(grid1, "o");
+}))
+viz(dist, {xLabel: 'Row', yLabel: 'Column'})
+
+var dist = Infer({method:'enumerate'}, makeMove(function(strategy, move){
+  move(grid2, "x");
+}))
+viz(dist, {xLabel: 'Row', yLabel: 'Column'})
+
+var dist = Infer({method:'enumerate'}, makeMove(function(strategy, move){
+  move(grid2, "o");
+}))
+viz(dist, {xLabel: 'Row', yLabel: 'Column'})
+
+var dist = Infer({method:'enumerate'}, makeMove(function(strategy, move){
+  move(grid3, "x");
+}))
+viz(dist, {xLabel: 'Row', yLabel: 'Column'})
+
+var dist = Infer({method:'enumerate'}, makeMove(function(strategy, move){
+  move(grid3, "o");
+}))
+viz(dist, {xLabel: 'Row', yLabel: 'Column'})
+
+var dist = Infer({method:'enumerate'}, makeMove(function(strategy, move){
+  move(grid4, "x");
+}))
+viz(dist, {xLabel: 'Row', yLabel: 'Column'})
+
+var dist = Infer({method:'enumerate'}, makeMove(function(strategy, move){
+  move(grid4, "o");
+}))
+viz(dist, {xLabel: 'Row', yLabel: 'Column'})
