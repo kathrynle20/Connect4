@@ -384,3 +384,63 @@ var dist = Infer({method:'enumerate'}, makeMove(function(strategy, move){
   move(grid4, "o");
 }))
 viz(dist, {xLabel: 'Row', yLabel: 'Column'})
+
+var predictWinner = function (state, dist) {
+  return Infer({
+    method: "MCMC",
+    samples: 1500, // Number of samples for inference
+    model() {
+      var simulateGame = function (currentState, currentPlayer) {
+        if (isTerminal(currentState)) {
+          if (hasWon(currentState, "x")) {
+            return "x";
+          } else if (hasWon(currentState, "o")) {
+            return "o";
+          } else {
+            return "draw";
+          }
+        } else {
+          // Use makeMove to decide the next move
+          var nextMove = sample(dist);
+          var nextState = transition(currentState, nextMove, currentPlayer);
+          var nextPlayer = otherPlayer(currentPlayer);
+          return simulateGame(nextState, nextPlayer);
+        }
+      };
+      
+      // Assume "x" starts the game
+      return simulateGame(state, "x");
+    },
+  });
+};
+
+// offensive
+var distOff = Infer({method:'enumerate'}, makeMove(function(strategy, move){
+  condition(strategy("x") == "offensive")
+  move(grid2, "x");
+}))
+// viz(dist, {xLabel: 'x', yLabel: 'y'})
+
+print(predictWinner(grid2, distOff));
+var winnerDist = predictWinner(grid2, distOff);
+viz(winnerDist, {xLabel: "Player", yLabel: "Probability"});
+// defensive
+var distDef = Infer({method:'enumerate'}, makeMove(function(strategy, move){
+  condition(strategy("x") == "defensive")
+  move(grid2, "x");
+}))
+// viz(dist, {xLabel: 'x', yLabel: 'y'})
+
+print(predictWinner(grid2, distDef));
+var winnerDist = predictWinner(grid2, distDef);
+viz(winnerDist, {xLabel: "Player", yLabel: "Probability"});
+// 1 random
+var distRan = Infer({method:'enumerate'}, makeMove(function(strategy, move){
+  condition(strategy("x") == "random")
+  move(grid2, "x");
+}))
+// viz(dist, {xLabel: 'x', yLabel: 'y'})
+
+print(predictWinner(grid2, distRan));
+var winnerDist = predictWinner(grid2, distRan);
+viz(winnerDist, {xLabel: "Player", yLabel: "Probability"});
